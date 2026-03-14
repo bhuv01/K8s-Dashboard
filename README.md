@@ -142,11 +142,29 @@ kubectl apply -f status_deploy.yaml
 
 ### 6. Access the dashboard
 
+**Local access (port-forward):**
 ```bash
 kubectl port-forward svc/k8s-status -n monitoring 8080:80
 ```
-
 Open **http://localhost:8080**
+
+**Run in background (keep terminal free):**
+```bash
+kubectl port-forward svc/k8s-status -n monitoring 8080:80 &
+```
+
+**Access from other machines on your network:**
+```bash
+kubectl port-forward svc/k8s-status -n monitoring 8080:80 --address 0.0.0.0
+```
+Then open `http://<your-machine-ip>:8080` from any browser.
+
+**Stop port-forward:**
+```bash
+# Foreground — Ctrl+C
+# Background — kill it
+pkill -f "port-forward svc/k8s-status"
+```
 
 For production access, use an Ingress or change the Service type in `status_deploy.yaml` to `NodePort` or `LoadBalancer`.
 
