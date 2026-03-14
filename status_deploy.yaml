@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-status
+  namespace: monitoring
+  labels:
+    app: k8s-status
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-status
+  template:
+    metadata:
+      labels:
+        app: k8s-status
+    spec:
+      serviceAccountName: status-sa
+      imagePullSecrets:
+        - name: ecr-secret
+      containers:
+        - name: status
+          image: <Your Docker Registry>:dashboard-v1.0
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8080
+              name: http
+
+          env:
+            - name: CLUSTER_NAME
+              value: "Cluster Name" # -> add cluster name here
+            - name: CPU_THRESHOLD
+              value: "85"
+            - name: MEM_THRESHOLD_MI
+              value: "3000"
+            - name: POD_RESTART_THRESHOLD
+              value: "3"
+            - name: STATUS_PORT
+              value: "8080"
+            - name: LOG_LEVEL
+              value: "INFO"
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-status
+  namespace: monitoring
+  labels:
+    app: k8s-status
+spec:
+  selector:
+    app: k8s-status
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+  type: ClusterIP

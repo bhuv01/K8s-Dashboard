@@ -1,0 +1,77 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# KubeWatch — RBAC v3
+# Cluster-wide READ-ONLY access for dynamic namespace discovery
+# No delete/update/patch permissions anywhere
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────
+# SERVICE ACCOUNT
+# ─────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: status-sa
+  namespace: monitoring
+
+---
+# ─────────────────────────────────────────────
+# CLUSTER ROLE — full read-only across all namespaces
+# Covers: namespaces, nodes, pods, deployments, statefulsets,
+#          pvcs, jobs, cronjobs, pod logs, pod/node metrics
+# ─────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubewatch-readonly
+rules:
+  # Namespace listing (for dynamic discovery)
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+
+  # Nodes
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+
+  # Pods + logs
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+
+  # PVCs
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+
+  # Deployments + StatefulSets
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+
+  # Jobs + CronJobs
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+
+  # Metrics API (node + pod metrics)
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+
+---
+# ─────────────────────────────────────────────
+# CLUSTER ROLE BINDING
+# ─────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubewatch-readonly-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubewatch-readonly
+subjects:
+  - kind: ServiceAccount
+    name: status-sa
+    namespace: monitoring
